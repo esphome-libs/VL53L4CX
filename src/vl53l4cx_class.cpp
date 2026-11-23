@@ -71,11 +71,7 @@ VL53L4CX_Error VL53L4CX::VL53L4CX_RdByte(VL53L4CX_DEV Dev, uint16_t index, uint8
 
   status = VL53L4CX_I2CRead(Dev->I2cDevAddr, index, data, 1);
 
-  if (status) {
-    return -1;
-  }
-
-  return 0;
+  return status;
 }
 
 VL53L4CX_Error VL53L4CX::VL53L4CX_RdWord(VL53L4CX_DEV Dev, uint16_t index, uint16_t *data)
@@ -120,12 +116,14 @@ VL53L4CX_Error VL53L4CX::VL53L4CX_UpdateByte(VL53L4CX_DEV Dev, uint16_t index, u
 
 VL53L4CX_Error VL53L4CX::VL53L4CX_I2CWrite(uint8_t DeviceAddr, uint16_t RegisterAddr, uint8_t *pBuffer, uint16_t NumByteToWrite)
 {
-  return hal_->write_registers((uint8_t)((DeviceAddr >> 1) & 0x7F), RegisterAddr, pBuffer, NumByteToWrite) ? 1 : 0;
+  return hal_->write_registers(DeviceAddr >> 1, RegisterAddr, pBuffer, NumByteToWrite) ? VL53L4CX_ERROR_NONE
+         : VL53L4CX_ERROR_CONTROL_INTERFACE;
 }
 
 VL53L4CX_Error VL53L4CX::VL53L4CX_I2CRead(uint8_t DeviceAddr, uint16_t RegisterAddr, uint8_t *pBuffer, uint16_t NumByteToRead)
 {
-  return hal_->read_registers((uint8_t)((DeviceAddr >> 1) & 0x7F), RegisterAddr, pBuffer, NumByteToRead) ? 1 : 0;
+  return hal_->read_registers(DeviceAddr >> 1, RegisterAddr, pBuffer, NumByteToRead) ? VL53L4CX_ERROR_NONE
+         : VL53L4CX_ERROR_CONTROL_INTERFACE;
 }
 
 VL53L4CX_Error VL53L4CX::VL53L4CX_GetTickCount(

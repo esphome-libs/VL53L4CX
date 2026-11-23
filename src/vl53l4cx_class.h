@@ -62,32 +62,16 @@
 /** Class representing a VL53L4CX sensor component
  */
 
-class VL53L4CX {
+class VL53L4CX final {
   public:
     /**
-     * @param[in] hal platform interface for the bus, the clock and XSHUT; must outlive this object
+     * @param[in] hal platform interface for the bus and the clock; must outlive this object
      */
     explicit VL53L4CX(VL53L4CXHal *hal) : hal_(hal)
     {
       Dev = &MyDevice;
       memset((void *)Dev, 0x0, sizeof(VL53L4CX_Dev_t));
       MyDevice.I2cDevAddr = VL53L4CX_DEFAULT_DEVICE_ADDRESS ;
-    }
-
-    virtual ~VL53L4CX() {}
-
-    /* turns on the sensor */
-    virtual void VL53L4CX_On(void)
-    {
-      hal_->set_xshut(true);
-      hal_->delay_ms(10);
-    }
-
-    /* turns off the sensor */
-    virtual void VL53L4CX_Off(void)
-    {
-      hal_->set_xshut(false);
-      hal_->delay_ms(10);
     }
 
     /**
@@ -98,8 +82,7 @@ class VL53L4CX {
     VL53L4CX_Error InitSensor(uint8_t address)
     {
       VL53L4CX_Error status = VL53L4CX_ERROR_NONE;
-      VL53L4CX_Off();
-      VL53L4CX_On();
+      /* Expects a sensor fresh out of reset at the default address: the caller cycles XSHUT first */
       status = VL53L4CX_SetDeviceAddress(address);
 
       if (status == VL53L4CX_ERROR_NONE) {

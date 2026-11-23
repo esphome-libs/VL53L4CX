@@ -19,29 +19,29 @@ namespace {
 
 class FakeHal : public VL53L4CXHal {
   public:
-    int write_registers(uint8_t address, uint16_t reg, const uint8_t *data, uint16_t len) override
+    bool write_registers(uint8_t address, uint16_t reg, const uint8_t *data, uint16_t len) override
     {
       last_address = address;
       if (nack) {
-        return 1;
+        return false;
       }
       for (uint16_t i = 0; i < len; i++) {
         regs[(uint16_t)(reg + i)] = data[i];
       }
-      return 0;
+      return true;
     }
 
-    int read_registers(uint8_t address, uint16_t reg, uint8_t *data, uint16_t len) override
+    bool read_registers(uint8_t address, uint16_t reg, uint8_t *data, uint16_t len) override
     {
       last_address = address;
       reads++;
       if (nack) {
-        return 1;
+        return false;
       }
       for (uint16_t i = 0; i < len; i++) {
         data[i] = regs[(uint16_t)(reg + i)];
       }
-      return 0;
+      return true;
     }
 
     uint32_t millis() override
@@ -56,13 +56,7 @@ class FakeHal : public VL53L4CXHal {
     {
       now_ms += (us + 999) / 1000;
     }
-    void set_xshut(bool high) override
-    {
-      xshut_changes.push_back(high);
-    }
-
     std::vector<uint8_t> regs = std::vector<uint8_t>(0x10000, 0);
-    std::vector<bool> xshut_changes;
     uint32_t now_ms{0};
     uint32_t reads{0};
     uint8_t last_address{0};
@@ -85,12 +79,6 @@ int main()
   CHECK(id == 0xEBAA);
   CHECK(hal.last_address == 0x29);
 
-  // Off then on drives XSHUT low then high
-  sensor.VL53L4CX_Off();
-  sensor.VL53L4CX_On();
-  CHECK(hal.xshut_changes.size() == 2);
-  CHECK(!hal.xshut_changes[0] && hal.xshut_changes[1]);
-
   // A new 8-bit address is written as its 7-bit form and used for the next transfers
   CHECK(sensor.VL53L4CX_SetDeviceAddress(0x58) == VL53L4CX_ERROR_NONE);
   CHECK(hal.regs[VL53L4CX_I2C_SLAVE__DEVICE_ADDRESS] == 0x2C);
@@ -108,10 +96,11 @@ int main()
   // A missing sensor (NACK) fails the call after one attempt; stm32duino looped forever here
   hal.nack = true;
   hal.reads = 0;
-  CHECK(sensor.VL53L4CX_GetSensorId(&id) != VL53L4CX_ERROR_NONE);
+  CHECK(sensor.VL53L4CX_GetSensorId(&id) == VL53L4CX_ERROR_CONTROL_INTERFACE);
   CHECK(hal.reads == 1);
   uint8_t ready = 0;
-  CHECK(sensor.VL53L4CX_GetMeasurementDataReady(&ready) != VL53L4CX_ERROR_NONE);
+  CHECK(sensor.VL53L4CX_GetMeasurementDataReady(&ready) == VL53L4CX_ERROR_CONTROL_INTERFACE);
+  CHECK(sensor.VL53L4CX_SetDeviceAddress(0x52) == VL53L4CX_ERROR_CONTROL_INTERFACE);
 
   std::puts("vl53l4cx host test passed");
   return 0;

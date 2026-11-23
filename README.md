@@ -8,9 +8,12 @@ ESP-IDF, Arduino or any other framework.
 ## Changes from stm32duino/VL53L4CX
 
 - `VL53L4CXHal` (`src/vl53l4cx_hal.h`) carries every platform call: register reads and writes over I2C, a
-  millisecond clock, delays and the XSHUT pin. `VL53L4CX` takes a `VL53L4CXHal *` instead of a `TwoWire *` and a pin.
-- A failed I2C read returns an error. The Arduino version retried forever, so a missing or unpowered sensor hung the
-  caller until a watchdog reset.
+  millisecond clock and delays. `VL53L4CX` takes a `VL53L4CXHal *` instead of a `TwoWire *` and a pin.
+- XSHUT is left to the caller, who can hold several sensors off while giving each its address. `VL53L4CX_On`/`Off`
+  are gone, and `InitSensor()` expects a sensor fresh out of reset at the default address.
+- A failed I2C transfer returns `VL53L4CX_ERROR_CONTROL_INTERFACE`. The Arduino version retried a read forever, so a
+  missing or unpowered sensor hung the caller until a watchdog reset.
+- `VL53L4CX_Dev_t` keeps only the fields the driver uses, and `VL53L4CX` has no virtual functions.
 - `stdint.h` is used directly instead of guessing the platform's integer types.
 - The ranging code, histogram processing and register settings are ST's, unchanged.
 - The Arduino examples and Arduino IDE metadata are removed; `library.json` and `idf_component.yml` package it for
@@ -23,17 +26,17 @@ ESP-IDF, Arduino or any other framework.
 
 class MyHal : public VL53L4CXHal {
  public:
-  int write_registers(uint8_t address, uint16_t reg, const uint8_t *data, uint16_t len) override;
-  int read_registers(uint8_t address, uint16_t reg, uint8_t *data, uint16_t len) override;
+  bool write_registers(uint8_t address, uint16_t reg, const uint8_t *data, uint16_t len) override;
+  bool read_registers(uint8_t address, uint16_t reg, uint8_t *data, uint16_t len) override;
   uint32_t millis() override;
   void delay_ms(uint32_t ms) override;
   void delay_us(uint32_t us) override;
-  void set_xshut(bool high) override;  // optional
 };
 
 MyHal hal;
 VL53L4CX sensor(&hal);  // about 9.5 KB; keep it out of the stack
 
+// Cycle XSHUT low then high first, so the sensor is at its default address
 sensor.InitSensor(0x52);  // 8-bit address; the HAL receives the 7-bit form (0x29)
 sensor.VL53L4CX_SetDistanceMode(VL53L4CX_DISTANCEMODE_LONG);
 sensor.VL53L4CX_StartMeasurement();
@@ -43,7 +46,8 @@ sensor.VL53L4CX_GetMultiRangingData(&data);
 sensor.VL53L4CX_ClearInterruptAndStartMeasurement();
 ```
 
-Register addresses are 16 bits, sent most significant byte first, followed by the data bytes.
+Register addresses are 16 bits, sent most significant byte first, followed by the data bytes. Send each transfer to
+the `address` argument: it changes after `VL53L4CX_SetDeviceAddress()`.
 
 ## Testing
 
