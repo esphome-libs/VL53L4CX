@@ -1,9 +1,11 @@
-file(GLOB VL53L4CX_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
-
 if(ESP_PLATFORM)
+  # No CONFIGURE_DEPENDS: ESP-IDF first reads this file in script mode, where it is invalid
+  file(GLOB VL53L4CX_SOURCES "src/*.cpp")
   idf_component_register(SRCS ${VL53L4CX_SOURCES} INCLUDE_DIRS "src")
   return()
 endif()
+
+file(GLOB VL53L4CX_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 
 # Host build: compiles the driver without any framework and runs a smoke test against a fake platform interface
 cmake_minimum_required(VERSION 3.20)
