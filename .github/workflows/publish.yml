@@ -38,3 +38,5 @@ jobs:
           components: |
             vl53l4cx: .
           namespace: esphome
+          # Registry token; without it the action falls back to GitHub OIDC, which needs a trusted uploader entry
+          api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
