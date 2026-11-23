@@ -13,7 +13,9 @@
 #define __VL53L4CX_CLASS_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "Arduino.h"
+#include <cstdint>
+#include <cstring>
+#include "vl53l4cx_hal.h"
 #include "vl53l4cx_preset_setup.h"
 #include "vl53l4cx_def.h"
 #include "vl53l4cx_nvm_structs.h"
@@ -36,7 +38,6 @@
 #include "vl53l4cx_register_structs.h"
 #include "vl53l4cx_tuning_parm_defaults.h"
 #include "vl53l4cx_xtalk_private_structs.h"
-#include "Wire.h"
 
 #define VL53L4CX_DEFAULT_DEVICE_ADDRESS           0x52
 
@@ -63,109 +64,30 @@
 
 class VL53L4CX {
   public:
-    /** Constructor
-     * @param[in] i2c device I2C to be used for communication
-     * @param[in] xshut_pin shutdown pin to be used as component XSHUT
+    /**
+     * @param[in] hal platform interface for the bus, the clock and XSHUT; must outlive this object
      */
-    VL53L4CX(TwoWire *i2c, int xshut_pin) : dev_i2c(i2c), xshut(xshut_pin)
-    {
-      Dev = &MyDevice;
-      memset((void *)Dev, 0x0, sizeof(VL53L4CX_Dev_t));
-      MyDevice.I2cHandle = i2c;
-      MyDevice.I2cDevAddr = VL53L4CX_DEFAULT_DEVICE_ADDRESS ;
-    }
-
-    /** Constructor
-     * No parameters
-     * Functions to set the Twowire I2c device and XShut pin
-     * should be executed before begin();
-     */
-    VL53L4CX() : dev_i2c(), xshut()
+    explicit VL53L4CX(VL53L4CXHal *hal) : hal_(hal)
     {
       Dev = &MyDevice;
       memset((void *)Dev, 0x0, sizeof(VL53L4CX_Dev_t));
       MyDevice.I2cDevAddr = VL53L4CX_DEFAULT_DEVICE_ADDRESS ;
     }
 
-    /** Destructor
-     */
     virtual ~VL53L4CX() {}
-    /* warning: VL53L4CX class does not have a destructor.
-       The warning should request to introduce a virtual destructor to make sure to delete the object */
 
-    virtual int begin()
-    {
-      if (xshut >= 0) {
-        pinMode(xshut, OUTPUT);
-        digitalWrite(xshut, LOW);
-      }
-      return 0;
-    }
-
-    virtual int end()
-    {
-      if (xshut >= 0) {
-        pinMode(xshut, INPUT);
-      }
-      return 0;
-    }
-
-    /*** Interface Methods ***/
-    /*** High level API ***/
-
-    /**
-     * @brief       Set the Twowire I2c Device
-     *
-     * This function is intended to initialize for the Twowire I2c bus
-     * when the constructor with no parameters is used.
-     *
-     * @param       Pointer to the i2c bus
-     * @return      void
-     */
-    void setI2cDevice(TwoWire *i2c)
-    {
-      dev_i2c = i2c;
-      MyDevice.I2cHandle = i2c;
-    }
-
-    /**
-     * @brief       Set the XShut Pin
-     *
-     * This function is intended to initialize the XShut pin
-     * when the constructor with no parameters is used.
-     *
-     * @param       xshut_pin
-     * @return      void
-     */
-    void setXShutPin(int xshut_pin)
-    {
-      xshut = xshut_pin;
-    }
-
-    /**
-     * @brief       PowerOn the sensor
-     * @return      void
-     */
     /* turns on the sensor */
     virtual void VL53L4CX_On(void)
     {
-      if (xshut >= 0) {
-        digitalWrite(xshut, HIGH);
-      }
-      delay(10);
+      hal_->set_xshut(true);
+      hal_->delay_ms(10);
     }
 
-    /**
-     * @brief       PowerOff the sensor
-     * @return      void
-     */
     /* turns off the sensor */
     virtual void VL53L4CX_Off(void)
     {
-      if (xshut >= 0) {
-        digitalWrite(xshut, LOW);
-      }
-      delay(10);
+      hal_->set_xshut(false);
+      hal_->delay_ms(10);
     }
 
     /**
@@ -3469,10 +3391,8 @@ class VL53L4CX {
 
   protected:
 
-    /* IO Device */
-    TwoWire *dev_i2c;
-    /* Digital out pin */
-    int xshut;
+    /* Platform interface */
+    VL53L4CXHal *hal_;
     /* Device data */
     VL53L4CX_Dev_t MyDevice;
     VL53L4CX_DEV Dev;

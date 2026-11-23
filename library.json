@@ -1,0 +1,26 @@
+{
+  "name": "VL53L4CX",
+  "version": "1.1.0-esphome.1",
+  "description": "STMicroelectronics VL53L4CX multi-target time-of-flight sensor driver. Fork of stm32duino/VL53L4CX with the Arduino Wire and GPIO calls replaced by a small platform interface (VL53L4CXHal), so it runs on any framework.",
+  "keywords": "vl53l4cx, time-of-flight, tof, distance, sensor",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/esphome-libs/VL53L4CX"
+  },
+  "authors": [
+    {
+      "name": "STMicroelectronics"
+    }
+  ],
+  "license": "BSD-3-Clause",
+  "frameworks": "*",
+  "platforms": "*",
+  "export": {
+    "include": [
+      "src/*",
+      "LICENSE.md",
+      "README.md",
+      "library.json"
+    ]
+  }
+}

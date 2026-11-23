@@ -12,14 +12,6 @@
 /* Includes */
 #include "vl53l4cx_class.h"
 
-#ifndef DEFAULT_I2C_BUFFER_LEN
-  #ifdef BUFFER_LENGTH
-    #define DEFAULT_I2C_BUFFER_LEN  BUFFER_LENGTH
-  #else
-    #define DEFAULT_I2C_BUFFER_LEN  32
-  #endif
-#endif
-
 /* Write and read functions from I2C */
 
 VL53L4CX_Error VL53L4CX::VL53L4CX_WriteMulti(VL53L4CX_DEV Dev, uint16_t index, uint8_t *pdata, uint32_t count)
@@ -128,117 +120,35 @@ VL53L4CX_Error VL53L4CX::VL53L4CX_UpdateByte(VL53L4CX_DEV Dev, uint16_t index, u
 
 VL53L4CX_Error VL53L4CX::VL53L4CX_I2CWrite(uint8_t DeviceAddr, uint16_t RegisterAddr, uint8_t *pBuffer, uint16_t NumByteToWrite)
 {
-  uint32_t i = 0;
-  uint8_t buffer[2];
-
-  while (i < NumByteToWrite) {
-    // If still more than DEFAULT_I2C_BUFFER_LEN bytes to go, DEFAULT_I2C_BUFFER_LEN,
-    // else the remaining number of bytes
-    size_t current_write_size = (NumByteToWrite - i > DEFAULT_I2C_BUFFER_LEN ? DEFAULT_I2C_BUFFER_LEN : NumByteToWrite - i);
-
-    dev_i2c->beginTransmission((uint8_t)((DeviceAddr >> 1) & 0x7F));
-
-    // Target register address for transfer
-    buffer[0] = (uint8_t)((RegisterAddr + i) >> 8);
-    buffer[1] = (uint8_t)((RegisterAddr + i) & 0xFF);
-    dev_i2c->write(buffer, 2);
-    if (dev_i2c->write(pBuffer + i, current_write_size) == 0) {
-      return 1;
-    } else {
-      i += current_write_size;
-      if (NumByteToWrite - i) {
-        // Flush buffer and send stop bit so we have compatibility also with ESP32 platforms
-        dev_i2c->endTransmission(true);
-      }
-    }
-  }
-
-  return dev_i2c->endTransmission(true);
+  return hal_->write_registers((uint8_t)((DeviceAddr >> 1) & 0x7F), RegisterAddr, pBuffer, NumByteToWrite) ? 1 : 0;
 }
 
 VL53L4CX_Error VL53L4CX::VL53L4CX_I2CRead(uint8_t DeviceAddr, uint16_t RegisterAddr, uint8_t *pBuffer, uint16_t NumByteToRead)
 {
-  int status = 0;
-  uint8_t buffer[2];
-
-  // Loop until the port is transmitted correctly
-  do {
-    dev_i2c->beginTransmission((uint8_t)((DeviceAddr >> 1) & 0x7F));
-
-    // Target register address for transfer
-    buffer[0] = (uint8_t)(RegisterAddr >> 8);
-    buffer[1] = (uint8_t)(RegisterAddr & 0xFF);
-    dev_i2c->write(buffer, 2);
-
-    status = dev_i2c->endTransmission(false);
-
-    // Fix for some STM32 boards
-    // Reinitialize the i2c bus with the default parameters
-#ifdef ARDUINO_ARCH_STM32
-    if (status) {
-      dev_i2c->end();
-      dev_i2c->begin();
-    }
-#endif
-    // End of fix
-
-  } while (status != 0);
-
-  uint32_t i = 0;
-  if (NumByteToRead > DEFAULT_I2C_BUFFER_LEN) {
-    while (i < NumByteToRead) {
-      // If still more than DEFAULT_I2C_BUFFER_LEN bytes to go, DEFAULT_I2C_BUFFER_LEN,
-      // else the remaining number of bytes
-      uint8_t current_read_size = (NumByteToRead - i > DEFAULT_I2C_BUFFER_LEN ? DEFAULT_I2C_BUFFER_LEN : NumByteToRead - i);
-      dev_i2c->requestFrom(((uint8_t)((DeviceAddr >> 1) & 0x7F)),
-                           current_read_size);
-      while (dev_i2c->available()) {
-        pBuffer[i] = dev_i2c->read();
-        i++;
-      }
-    }
-  } else {
-    dev_i2c->requestFrom(((uint8_t)((DeviceAddr >> 1) & 0x7F)), (uint8_t)NumByteToRead);
-    while (dev_i2c->available()) {
-      pBuffer[i] = dev_i2c->read();
-      i++;
-    }
-  }
-
-  return i != NumByteToRead;
+  return hal_->read_registers((uint8_t)((DeviceAddr >> 1) & 0x7F), RegisterAddr, pBuffer, NumByteToRead) ? 1 : 0;
 }
-
 
 VL53L4CX_Error VL53L4CX::VL53L4CX_GetTickCount(
   uint32_t *ptick_count_ms)
 {
-
   /* Returns current tick count in [ms] */
-
-  VL53L4CX_Error status  = VL53L4CX_ERROR_NONE;
-
-  *ptick_count_ms = (uint32_t)millis();
-
-  return status;
+  *ptick_count_ms = hal_->millis();
+  return VL53L4CX_ERROR_NONE;
 }
-
-
 
 VL53L4CX_Error VL53L4CX::VL53L4CX_WaitUs(VL53L4CX_Dev_t *pdev, int32_t wait_us)
 {
   (void)pdev;
-  delayMicroseconds(wait_us);
+  hal_->delay_us((uint32_t)wait_us);
   return VL53L4CX_ERROR_NONE;
 }
-
 
 VL53L4CX_Error VL53L4CX::VL53L4CX_WaitMs(VL53L4CX_Dev_t *pdev, int32_t wait_ms)
 {
   (void)pdev;
-  delay(wait_ms);
+  hal_->delay_ms((uint32_t)wait_ms);
   return VL53L4CX_ERROR_NONE;
 }
-
 
 VL53L4CX_Error VL53L4CX::VL53L4CX_WaitValueMaskEx(
   VL53L4CX_Dev_t *pdev,
