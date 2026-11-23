@@ -26,39 +26,6 @@
 #endif
 
 
-#if !defined(STDINT_H) && !defined(_STDINT_H) && !defined(_GCC_STDINT_H) && !defined(__STDINT_DECLS) && !defined(_GCC_WRAP_STDINT_H)  && !defined(_STDINT)
-
-  #pragma message("Please review  type definition of STDINT define for your platform and add to list above ")
-
-
-
-
-
-
-  typedef unsigned long long uint64_t;
-
-
-
-  typedef unsigned int uint32_t;
-
-
-  typedef int int32_t;
-
-
-  typedef unsigned short uint16_t;
-
-
-  typedef short int16_t;
-
-
-  typedef unsigned char uint8_t;
-
-
-  typedef signed char int8_t;
-
-
-#endif
-
 
 
 typedef uint32_t FixPoint1616_t;

@@ -41,7 +41,6 @@
 #endif
 
 #include "vl53l4cx_def.h"
-#include "Wire.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -52,20 +51,7 @@ extern "C"
 typedef struct {
   VL53L4CX_DevData_t   Data;
   /*!< Low Level Driver data structure */
-  uint8_t   i2c_slave_address;
-  uint8_t   comms_type;
-  uint16_t  comms_speed_khz;
-  TwoWire *I2cHandle;
   uint8_t   I2cDevAddr;
-  int     Present;
-  int   Enabled;
-  int LoopState;
-  int FirstStreamCountZero;
-  int   Idle;
-  int   Ready;
-  uint8_t RangeStatus;
-  FixPoint1616_t SignalRateRtnMegaCps;
-  VL53L4CX_DeviceState   device_state;  /*!< Device State */
 } VL53L4CX_Dev_t;
 
 

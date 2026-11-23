@@ -1,56 +1,60 @@
 # VL53L4CX
-Arduino library to support the VL53L4CX Time-of-Flight high accuracy ranging sensor with multi target detection.
 
-## API
+Driver for the STMicroelectronics VL53L4CX time-of-flight sensor with multi-target detection, used by
+[ESPHome](https://esphome.io). It is a fork of [stm32duino/VL53L4CX](https://github.com/stm32duino/VL53L4CX)
+with the Arduino `Wire`, GPIO and timing calls replaced by a small platform interface, so the same code runs on
+ESP-IDF, Arduino or any other framework.
 
-This sensor uses I2C to communicate. An I2C instance is required to access to the sensor.
-The APIs provide simple distance measure in both polling and interrupt modes.
+## Changes from stm32duino/VL53L4CX
 
-## Examples
+- `VL53L4CXHal` (`src/vl53l4cx_hal.h`) carries every platform call: register reads and writes over I2C, a
+  millisecond clock and delays. `VL53L4CX` takes a `VL53L4CXHal *` instead of a `TwoWire *` and a pin.
+- XSHUT is left to the caller, who can hold several sensors off while giving each its address. `VL53L4CX_On`/`Off`
+  are gone, and `InitSensor()` expects a sensor fresh out of reset at the default address.
+- A failed I2C transfer returns `VL53L4CX_ERROR_CONTROL_INTERFACE`. The Arduino version retried a read forever, so a
+  missing or unpowered sensor hung the caller until a watchdog reset.
+- `VL53L4CX_Dev_t` keeps only the fields the driver uses, and `VL53L4CX` has no virtual functions.
+- `stdint.h` is used directly instead of guessing the platform's integer types.
+- The ranging code, histogram processing and register settings are ST's, unchanged.
+- The Arduino examples and Arduino IDE metadata are removed; `library.json` and `idf_component.yml` package it for
+  PlatformIO and the ESP-IDF component registry.
 
-There are 3 examples with the VL53L4CX library.
+## Usage
 
-* VL53L4CX_Sat_HelloWorld: This example code is to show how to get proximity
-  values of the VL53L4CX satellite sensor in polling mode.
+```cpp
+#include "vl53l4cx_class.h"
 
-* VL53L4CX_Sat_HelloWorld_Interrupt: This example code is to show how to get proximity
-  values of the VL53L4CX satellite sensor in interrupt mode.
+class MyHal : public VL53L4CXHal {
+ public:
+  bool write_registers(uint8_t address, uint16_t reg, const uint8_t *data, uint16_t len) override;
+  bool read_registers(uint8_t address, uint16_t reg, uint8_t *data, uint16_t len) override;
+  uint32_t millis() override;
+  void delay_ms(uint32_t ms) override;
+  void delay_us(uint32_t us) override;
+};
 
-    In order to use these examples you need to connect the VL53L4CX satellite sensor directly to the Nucleo board with wires as explained below:
-    - pin 1 (GND) of the VL53L4CX satellite connected to GND of the Nucleo board
-    - pin 2 (VDD) of the VL53L4CX satellite connected to 3V3 pin of the Nucleo board
-    - pin 3 (SCL) of the VL53L4CX satellite connected to pin D15 (SCL) of the Nucleo board
-    - pin 4 (SDA) of the VL53L4CX satellite connected to pin D14 (SDA) of the Nucleo board
-    - pin 5 (GPIO1) of the VL53L4CX satellite connected to pin A2 of the Nucleo board
-    - pin 6 (XSHUT) of the VL53L4CX satellite connected to pin A1 of the Nucleo board
+MyHal hal;
+VL53L4CX sensor(&hal);  // about 9.5 KB; keep it out of the stack
 
+// Cycle XSHUT low then high first, so the sensor is at its default address
+sensor.InitSensor(0x52);  // 8-bit address; the HAL receives the 7-bit form (0x29)
+sensor.VL53L4CX_SetDistanceMode(VL53L4CX_DISTANCEMODE_LONG);
+sensor.VL53L4CX_StartMeasurement();
+// When GPIO1 goes low, or VL53L4CX_GetMeasurementDataReady() reports ready:
+VL53L4CX_MultiRangingData_t data;
+sensor.VL53L4CX_GetMultiRangingData(&data);
+sensor.VL53L4CX_ClearInterruptAndStartMeasurement();
+```
 
-* VL53L4CX_Sat_SerialGraphic: This example code is to show how to get proximity
-  values of the VL53L4CX satellite sensor in polling mode.
+Register addresses are 16 bits, sent most significant byte first, followed by the data bytes. Send each transfer to
+the `address` argument: it changes after `VL53L4CX_SetDeviceAddress()`.
 
-     In order to use this example as written, you need to connect an Adafruit VL53L4CX Time of Flight Distance Sensor
-     to an Adafruit ESP32 board listed below with wires either directly to the exposed pins or the STEMMA QT connector
-     where available:
-     - Adafruit VL53L4CX ToF Sensor ------> VIN   GND   SCL      SDA      STEMMA QT           XSHUT
-     - Adafruit HUZZAH32 – ESP32 Feather    3.3v  gnd   SCL(22)  SDA(23)    n/a                ***
-     - Adafruit ESP32 Feather V2 ^          3.3v  gnd   SCL(20)  SDA(22)  SCL(20)  SDA(22)     ***
-     - Adafruit QT Py ESP32 Pico ^^         3.3v  gnd   SCL(33)  SDA( 4)  SCL1(19) SDA1(22)    ***
-     - Adafruit QT Py ESP32-S2   ^^         3.3v  gnd   SCL( 6)  SDA( 7)  SCL1(40) SDA1(41)    ***
-        *** XSHUT connected to the desired output GPIO pin, A1 used in the example.
-         ^  The Feather ESP32 V2 has a NEOPIXEL_I2C_POWER pin that must be pulled HIGH 
-            to enable power to the STEMMA QT port. Without it, the QT port will not work!
-         ^^ ESP32 boards with secondary I2c ports require that the secondary ports must be 
-            manually assigned their pins with setPins(), e.g. Wire1.setPins(SDA1, SCL1);
-   
-     This example looks for the ToF device on either I2c port when two ports are known to exist.
-     By default, it will display valid results "graphically" through the serial terminal.
-     Display of details, as displayed in example VL53L4CX_Sat_HelloWorld, is optional by 
-     changing the value of a parameter.
+## Testing
 
-## Documentation
+`cmake -S . -B build && cmake --build build && ctest --test-dir build` builds the driver with no framework and runs a
+smoke test against a fake platform interface.
 
-You can find the source files at  
-https://github.com/stm32duino/VL53L4CX
+## License
 
-The VL53L4CX datasheet is available at  
-https://www.st.com/en/imaging-and-photonics-solutions/vl53l4cx.html
+BSD-3-Clause, see [LICENSE.md](LICENSE.md). Most of ST's source files are dual licensed GPL-2.0+ or BSD-3-Clause; this
+fork is distributed under BSD-3-Clause.
