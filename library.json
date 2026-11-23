@@ -1,6 +1,6 @@
 {
   "name": "VL53L4CX",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "STMicroelectronics VL53L4CX multi-target time-of-flight sensor driver. Fork of stm32duino/VL53L4CX with the Arduino Wire and GPIO calls replaced by a small platform interface (VL53L4CXHal), so it runs on any framework.",
   "keywords": "vl53l4cx, time-of-flight, tof, distance, sensor",
   "repository": {

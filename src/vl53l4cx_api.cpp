@@ -506,7 +506,7 @@ VL53L4CX_Error VL53L4CX::VL53L4CX_StartMeasurement()
   uint8_t i;
   VL53L4CX_LLDriverData_t *pdev = VL53L4CXDevStructGetLLDriverHandle(Dev);
 
-  VL53L4CX_load_patch(Dev);
+  Status = VL53L4CX_load_patch(Dev);
   for (i = 0; i < VL53L4CX_MAX_RANGE_RESULTS; i++) {
     pdev->PreviousRangeMilliMeter[i] = 0;
     pdev->PreviousRangeStatus[i] = 255;
@@ -913,9 +913,11 @@ VL53L4CX_Error VL53L4CX::VL53L4CX_GetMultiRangingData(VL53L4CX_MultiRangingData_
              VL53L4CX_DEVICERESULTSLEVEL_FULL,
              presults);
 
-  Status = SetMeasurementData(Dev,
-                              presults,
-                              pMultiRangingData);
+  /* A failed read must not be reported as a good measurement */
+  if (Status == VL53L4CX_ERROR_NONE)
+    Status = SetMeasurementData(Dev,
+                                presults,
+                                pMultiRangingData);
 
   return Status;
 }
