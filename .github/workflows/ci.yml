@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v6.0.0
+      - name: ESP-IDF requirements scan
+        run: cmake -DCOMPONENT_DIR="$PWD" -P tests/idf_requirements_scan.cmake
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
       - name: Build
