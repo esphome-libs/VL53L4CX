@@ -101,6 +101,11 @@ int main()
   uint8_t ready = 0;
   CHECK(sensor.VL53L4CX_GetMeasurementDataReady(&ready) == VL53L4CX_ERROR_CONTROL_INTERFACE);
   CHECK(sensor.VL53L4CX_SetDeviceAddress(0x52) == VL53L4CX_ERROR_CONTROL_INTERFACE);
+  // A failed results read is reported, not turned into a measurement by the processing after it
+  VL53L4CX_MultiRangingData_t data;
+  CHECK(sensor.VL53L4CX_GetMultiRangingData(&data) == VL53L4CX_ERROR_CONTROL_INTERFACE);
+  // A failed patch load stops the start instead of ranging with an incomplete patch
+  CHECK(sensor.VL53L4CX_StartMeasurement() == VL53L4CX_ERROR_CONTROL_INTERFACE);
 
   std::puts("vl53l4cx host test passed");
   return 0;
